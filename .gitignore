@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/settings.json
+*.swp
+
+## Secrets — NUNCA versionar
+.env
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+## Coverage
+coverage/
+TestResults/
+
+## Docker
+.dockerignore
+
+## Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
