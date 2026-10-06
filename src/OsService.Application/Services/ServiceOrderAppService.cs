@@ -120,4 +120,5 @@ public class ServiceOrderAppService(
         order.History.Select(h => new ServiceOrderHistoryResponse(h.Status, h.Note, h.OccurredAt)),
         order.Items.Select(i => new ServiceOrderItemResponse(i.Id, i.ServiceName, i.Price, i.Quantity))
     );
+
 }
