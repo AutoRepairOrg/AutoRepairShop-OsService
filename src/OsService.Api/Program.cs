@@ -1,44 +1,72 @@
+using Microsoft.EntityFrameworkCore;
+using OsService.Application.Events;
+using OsService.Application.Interfaces;
+using OsService.Application.Services;
+using OsService.Domain.Interfaces;
+using OsService.Infrastructure.Messaging;
+using OsService.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// ── Database (SQL Server / LocalDB) ───────────────────────────────────────────
+builder.Services.AddDbContext<OsDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("OsDatabase")));
+
+// ── Mensageria: RabbitMQ em produção, Stub em desenvolvimento ─────────────────
+var useStub = builder.Configuration.GetValue<bool>("Messaging:UseStub");
+
+if (useStub)
+{
+    builder.Services.AddScoped<IEventPublisher, StubEventPublisher>();
+}
+else
+{
+    builder.Services.AddSingleton<RabbitMQ.Client.IConnection>(_ =>
+    {
+        var factory = new RabbitMQ.Client.ConnectionFactory
+        {
+            HostName = builder.Configuration["RabbitMQ:Host"] ?? "localhost",
+            Port     = int.Parse(builder.Configuration["RabbitMQ:Port"] ?? "5672"),
+            UserName = builder.Configuration["RabbitMQ:User"] ?? "guest",
+            Password = builder.Configuration["RabbitMQ:Password"] ?? "guest",
+        };
+        return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+    });
+    builder.Services.AddScoped<IEventPublisher, RabbitMqEventPublisher>();
+}
+
+// ── DI ────────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
+builder.Services.AddScoped<ServiceOrderAppService>();
+builder.Services.AddScoped<PaymentConfirmedHandler>();
+builder.Services.AddScoped<BudgetRejectedHandler>();
+
+// ── API ───────────────────────────────────────────────────────────────────────
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "OsService API", Version = "v1",
+        Description = "Microsserviço de Ordens de Serviço — 12SOAT Fase 4" });
+});
+
+// ── Health Check ─────────────────────────────────────────────────────────────
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<OsDbContext>("sql-server");
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// ── Migrations automáticas ────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var db = scope.ServiceProvider.GetRequiredService<OsDbContext>();
+    await db.Database.MigrateAsync();
 }
 
-app.UseHttpsRedirection();
+app.UseSwagger();
+app.UseSwaggerUI();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
