@@ -12,8 +12,8 @@ using OsService.Infrastructure.Persistence;
 namespace OsService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(OsDbContext))]
-    [Migration("20261006184720_Init")]
-    partial class Init
+    [Migration("20261006185320_FixBackingFields")]
+    partial class FixBackingFields
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -24,16 +24,21 @@ public class OsDbContext(DbContextOptions<OsDbContext> options) : DbContext(opti
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Status).IsRequired();
 
-            entity.HasMany(e => e.History)
-                  .WithOne()
-                  .HasForeignKey(h => h.ServiceOrderId);
-
-            entity.HasMany(e => e.Items)
-                  .WithOne()
-                  .HasForeignKey(i => i.ServiceOrderId);
-
-            // Ignorar eventos de domínio — não persistir
+            // IReadOnlyCollection<T> não é mapeado automaticamente pelo EF Core.
+            // Ignoramos as propriedades wrapper e usamos os backing fields (_history, _items) diretamente.
+            entity.Ignore(e => e.History);
+            entity.Ignore(e => e.Items);
             entity.Ignore(e => e.DomainEvents);
+
+            entity.HasMany<ServiceOrderHistory>("_history")
+                  .WithOne()
+                  .HasForeignKey(h => h.ServiceOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany<ServiceOrderItem>("_items")
+                  .WithOne()
+                  .HasForeignKey(i => i.ServiceOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ServiceOrderHistory>(entity =>

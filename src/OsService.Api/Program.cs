@@ -63,6 +63,21 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+// Middleware temporário de diagnóstico — remover antes do deploy
+app.Use(async (ctx, next) => {
+    try { await next(); }
+    catch (Exception ex) {
+        ctx.Response.StatusCode = 500;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsJsonAsync(new {
+            error   = ex.Message,
+            inner   = ex.InnerException?.Message,
+            type    = ex.GetType().Name,
+            stack   = ex.StackTrace?.Split('\n').Take(6)
+        });
+    }
+});
+
 app.UseSwagger();
 app.UseSwaggerUI();
 

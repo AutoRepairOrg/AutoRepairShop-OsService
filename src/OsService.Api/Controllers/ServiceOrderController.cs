@@ -58,6 +58,15 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
             return Ok(result);
         }
         catch (KeyNotFoundException) { return NotFound(); }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new {
+                error = ex.Message,
+                inner = ex.InnerException?.Message,
+                type  = ex.GetType().FullName,
+                stack = ex.StackTrace?.Split('\n').Take(8)
+            });
+        }
     }
 
     /// <summary>Inicia diagnóstico da OS.</summary>
@@ -99,5 +108,14 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
         }
         catch (KeyNotFoundException) { return NotFound(); }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new {
+                error = ex.Message,
+                inner = ex.InnerException?.Message,
+                type  = ex.GetType().FullName,
+                stack = ex.StackTrace?.Split('\n').Take(8)
+            });
+        }
     }
 }

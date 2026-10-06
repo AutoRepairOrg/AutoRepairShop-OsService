@@ -9,21 +9,21 @@ public class ServiceOrderRepository(OsDbContext context) : IServiceOrderReposito
 {
     public async Task<ServiceOrder?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await context.ServiceOrders
-            .Include(o => o.History)
-            .Include(o => o.Items)
+            .Include("_history")
+            .Include("_items")
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<IEnumerable<ServiceOrder>> GetByStatusAsync(ServiceOrderStatus status, CancellationToken ct = default)
         => await context.ServiceOrders
-            .Include(o => o.History)
-            .Include(o => o.Items)
+            .Include("_history")
+            .Include("_items")
             .Where(o => o.Status == status)
             .ToListAsync(ct);
 
     public async Task<IEnumerable<ServiceOrder>> GetByVehiclePlateAsync(string plate, CancellationToken ct = default)
         => await context.ServiceOrders
-            .Include(o => o.History)
-            .Include(o => o.Items)
+            .Include("_history")
+            .Include("_items")
             .Where(o => o.VehiclePlate == plate.ToUpper())
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
@@ -36,7 +36,16 @@ public class ServiceOrderRepository(OsDbContext context) : IServiceOrderReposito
 
     public async Task UpdateAsync(ServiceOrder order, CancellationToken ct = default)
     {
-        context.ServiceOrders.Update(order);
+        // Garante que novos itens/histórico adicionados ao aggregate sejam rastreados pelo EF Core.
+        // IReadOnlyCollection não é detectado automaticamente pelo change tracker — adicionamos explicitamente.
+        foreach (var h in order.History)
+            if (context.Entry(h).State == EntityState.Detached)
+                context.Add(h);
+
+        foreach (var i in order.Items)
+            if (context.Entry(i).State == EntityState.Detached)
+                context.Add(i);
+
         await context.SaveChangesAsync(ct);
     }
 }
