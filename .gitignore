@@ -24,3 +24,6 @@ TestResults/
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+# VS Code C# Dev Tools - Auto-generated runners
+.vscodecsdt/Runners/
