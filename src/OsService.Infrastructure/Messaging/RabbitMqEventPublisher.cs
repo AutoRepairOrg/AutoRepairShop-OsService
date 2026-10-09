@@ -26,7 +26,8 @@ public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, I
     {
         var channel = await GetChannelAsync();
         var exchangeName = "os-service-events";
-        var routingKey = typeof(TEvent).Name; // e.g. "OsCreatedEvent"
+        // Usar GetType() (não typeof(TEvent)): quando chamado via DomainEvent base, TEvent é a base.
+        var routingKey = @event.GetType().Name; // e.g. "OsCreatedEvent"
 
         await channel.ExchangeDeclareAsync(
             exchange: exchangeName,
@@ -36,7 +37,7 @@ public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, I
             cancellationToken: ct
         );
 
-        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(@event));
+        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(@event, @event.GetType()));
 
         await channel.BasicPublishAsync(
             exchange: exchangeName,
