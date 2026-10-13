@@ -23,9 +23,10 @@ public class ServiceOrder
     private readonly List<ServiceOrderItem> _items = [];
     private readonly List<DomainEvent> _domainEvents = [];
 
-    public IReadOnlyCollection<ServiceOrderHistory> History => _history.AsReadOnly();
-    public IReadOnlyCollection<ServiceOrderItem> Items => _items.AsReadOnly();
-    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    // Retornar a lista diretamente (não AsReadOnly): EF Core precisa do mesmo tipo do backing field.
+    public IReadOnlyCollection<ServiceOrderHistory> History => _history;
+    public IReadOnlyCollection<ServiceOrderItem> Items => _items;
+    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents;
 
     // Construtor para EF Core
 #pragma warning disable CS8618
