@@ -2,13 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-COPY AutoRepairShop-OsService.sln ./
 COPY src/OsService.Api/OsService.Api.csproj                     src/OsService.Api/
 COPY src/OsService.Application/OsService.Application.csproj     src/OsService.Application/
 COPY src/OsService.Domain/OsService.Domain.csproj               src/OsService.Domain/
 COPY src/OsService.Infrastructure/OsService.Infrastructure.csproj src/OsService.Infrastructure/
 
-RUN dotnet restore
+RUN dotnet restore src/OsService.Api/OsService.Api.csproj
 
 COPY src/ src/
 RUN dotnet publish src/OsService.Api/OsService.Api.csproj -c Release -o /app/publish --no-restore
