@@ -24,34 +24,45 @@ public class OsDbContext(DbContextOptions<OsDbContext> options) : DbContext(opti
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Status).IsRequired();
 
-            // IReadOnlyCollection<T> não é mapeado automaticamente pelo EF Core.
-            // Ignoramos as propriedades wrapper e usamos os backing fields (_history, _items) diretamente.
-            entity.Ignore(e => e.History);
-            entity.Ignore(e => e.Items);
             entity.Ignore(e => e.DomainEvents);
 
-            entity.HasMany<ServiceOrderHistory>("_history")
+            // IReadOnlyCollection + backing field: map navigation by name, access via field.
+            // NÃO usar Ignore(History/Items) — isso quebra change tracking e Include.
+            entity.HasMany<ServiceOrderHistory>("History")
                   .WithOne()
                   .HasForeignKey(h => h.ServiceOrderId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation("History")
+                  .HasField("_history")
+                  .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-            entity.HasMany<ServiceOrderItem>("_items")
+            entity.HasMany<ServiceOrderItem>("Items")
                   .WithOne()
                   .HasForeignKey(i => i.ServiceOrderId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation("Items")
+                  .HasField("_items")
+                  .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<ServiceOrderHistory>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Note).IsRequired().HasMaxLength(500);
         });
 
         modelBuilder.Entity<ServiceOrderItem>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<ServiceOrder>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
         });
     }
 }
