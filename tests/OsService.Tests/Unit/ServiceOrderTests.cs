@@ -69,6 +69,7 @@ public class ServiceOrderTests
         var order = CreateValidOrder();
 
         order.StartDiagnosis();
+        order.AddItem("Troca de óleo", 150m);
         order.Status.Should().Be(ServiceOrderStatus.InDiagnosis);
 
         order.SendForApproval();
@@ -104,6 +105,7 @@ public class ServiceOrderTests
     {
         var order = CreateValidOrder();
         order.StartDiagnosis();
+        order.AddItem("Revisão geral", 300m);
         order.SendForApproval();
         order.StartExecution();
         order.Finish();
@@ -148,6 +150,7 @@ public class ServiceOrderTests
         var order = CreateValidOrder(); // +1 história
 
         order.StartDiagnosis();        // +1
+        order.AddItem("Revisão", 200m);
         order.SendForApproval();       // +1
 
         order.History.Should().HaveCount(3);

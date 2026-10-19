@@ -46,8 +46,10 @@ public class RabbitMqConsumerService(
             autoDelete: false,
             cancellationToken: stoppingToken);
 
+        // Eventos do BillingService que interessam ao OsService
         await _channel.QueueBindAsync(QueueName, ExchangeName, "PaymentConfirmedEvent", cancellationToken: stoppingToken);
-        await _channel.QueueBindAsync(QueueName, ExchangeName, "BudgetRejectedEvent", cancellationToken: stoppingToken);
+        await _channel.QueueBindAsync(QueueName, ExchangeName, "BudgetRejectedEvent",   cancellationToken: stoppingToken);
+        await _channel.QueueBindAsync(QueueName, ExchangeName, "BudgetApprovedEvent",   cancellationToken: stoppingToken);
 
         await _channel.BasicQosAsync(0, 1, false, stoppingToken);
 
@@ -103,6 +105,15 @@ public class RabbitMqConsumerService(
                     await handler.HandleAsync(msg.OsId, msg.Reason);
                     break;
                 }
+                case "BudgetApprovedEvent":
+                {
+                    var msg = JsonSerializer.Deserialize<IncomingBudgetApproved>(body, JsonOptions)
+                        ?? throw new InvalidOperationException("Payload BudgetApprovedEvent inválido.");
+
+                    var handler = scope.ServiceProvider.GetRequiredService<BudgetApprovedHandler>();
+                    await handler.HandleAsync(msg.OsId);
+                    break;
+                }
                 default:
                     logger.LogWarning("Routing key ignorada: {RoutingKey}", routingKey);
                     break;
@@ -129,4 +140,5 @@ public class RabbitMqConsumerService(
     // DTOs mínimos para deserializar eventos publicados pelo BillingService (sem acoplar os Domain projects)
     private sealed record IncomingPaymentConfirmed(Guid OsId);
     private sealed record IncomingBudgetRejected(Guid OsId, string Reason);
+    private sealed record IncomingBudgetApproved(Guid OsId);
 }

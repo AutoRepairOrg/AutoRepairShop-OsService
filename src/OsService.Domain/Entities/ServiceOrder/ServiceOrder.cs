@@ -77,13 +77,22 @@ public class ServiceOrder
     public void SendForApproval()
     {
         EnsureStatus(ServiceOrderStatus.InDiagnosis, "Aprovação só pode ser solicitada após o diagnóstico.");
+        if (_items.Count == 0)
+            throw new InvalidOperationException("A OS precisa ter ao menos um item antes de enviar para aprovação.");
+
         UpdateStatus(ServiceOrderStatus.WaitingApproval, "Orçamento gerado. Aguardando aprovação do cliente.");
+
+        var itemPayloads = _items
+            .Select(i => new OsItemPayload(i.ServiceName, i.Price, i.Quantity))
+            .ToList();
+        AddDomainEvent(new OsSentForApprovalEvent(Id, itemPayloads));
     }
 
     public void StartExecution()
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval, "Execução só inicia após aprovação do orçamento.");
         UpdateStatus(ServiceOrderStatus.InExecution, "Execução do serviço iniciada.");
+        AddDomainEvent(new OsExecutionStartedEvent(Id, CustomerName, VehiclePlate, Description));
     }
 
     public void Finish()
@@ -96,6 +105,7 @@ public class ServiceOrder
     {
         EnsureStatus(ServiceOrderStatus.Finished, "Entrega só possível após conclusão do serviço.");
         UpdateStatus(ServiceOrderStatus.Delivered, "Veículo entregue ao cliente.");
+        AddDomainEvent(new OsClosedEvent(Id));
     }
 
     public void Cancel(string reason)

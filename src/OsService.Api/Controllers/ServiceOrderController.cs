@@ -46,7 +46,7 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
         return Ok(result);
     }
 
-    /// <summary>Adiciona item (serviço/peça) à OS.</summary>
+    /// <summary>Adiciona item (serviço/peça) à OS durante o diagnóstico.</summary>
     [HttpPost("{id:guid}/items")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -69,29 +69,54 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
         }
     }
 
-    /// <summary>Inicia diagnóstico da OS.</summary>
+    /// <summary>Inicia diagnóstico da OS (Received → InDiagnosis).</summary>
     [HttpPatch("{id:guid}/start-diagnosis")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> StartDiagnosis(Guid id, CancellationToken ct)
         => await ExecuteStatusChange(() => appService.StartDiagnosisAsync(id, ct));
 
-    /// <summary>Envia OS para aprovação de orçamento.</summary>
+    /// <summary>
+    /// Envia a OS para aprovação de orçamento (InDiagnosis → WaitingApproval).
+    /// Publica OsSentForApprovalEvent com os itens diagnosticados —
+    /// o BillingService consumirá esse evento e populará o Budget automaticamente.
+    /// Requer ao menos um item adicionado à OS.
+    /// </summary>
     [HttpPatch("{id:guid}/send-for-approval")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> SendForApproval(Guid id, CancellationToken ct)
         => await ExecuteStatusChange(() => appService.SendForApprovalAsync(id, ct));
 
-    /// <summary>Inicia execução do serviço.</summary>
+    /// <summary>
+    /// [Override manual] Inicia execução do serviço (WaitingApproval → InExecution).
+    /// No fluxo normal do Saga, este passo é acionado automaticamente pelo BudgetApprovedEvent.
+    /// Use este endpoint apenas como override administrativo.
+    /// Publica OsExecutionStartedEvent para o ExecutionService.
+    /// </summary>
     [HttpPatch("{id:guid}/start-execution")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> StartExecution(Guid id, CancellationToken ct)
         => await ExecuteStatusChange(() => appService.StartExecutionAsync(id, ct));
 
-    /// <summary>Finaliza o serviço.</summary>
+    /// <summary>
+    /// [Override manual] Finaliza o serviço (InExecution → Finished).
+    /// No fluxo normal do Saga, este passo será acionado pelo ExecutionCompletedEvent do ExecutionService.
+    /// Use este endpoint apenas como override administrativo.
+    /// </summary>
     [HttpPatch("{id:guid}/finish")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Finish(Guid id, CancellationToken ct)
         => await ExecuteStatusChange(() => appService.FinishAsync(id, ct));
+
+    /// <summary>
+    /// [Override manual] Registra a entrega do veículo ao cliente (Finished → Delivered).
+    /// No fluxo normal do Saga, este passo é acionado pelo PaymentConfirmedEvent via handler.
+    /// Use este endpoint apenas como override administrativo.
+    /// Publica OsClosedEvent.
+    /// </summary>
+    [HttpPatch("{id:guid}/deliver")]
+    [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Deliver(Guid id, CancellationToken ct)
+        => await ExecuteStatusChange(() => appService.DeliverAsync(id, ct));
 
     /// <summary>Cancela a OS.</summary>
     [HttpPatch("{id:guid}/cancel")]

@@ -112,6 +112,7 @@ public class ServiceOrderRepositoryConcurrencyTests : IAsyncLifetime
             var repo = new ServiceOrderRepository(ctx);
             var loaded = await repo.GetByIdAsync(orderId);
             loaded!.StartDiagnosis();
+            loaded.AddItem("Revisão completa", 500m);
             loaded.SendForApproval();
             loaded.StartExecution();
             await repo.UpdateAsync(loaded);
