@@ -41,6 +41,7 @@ builder.Services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
 builder.Services.AddScoped<ServiceOrderAppService>();
 builder.Services.AddScoped<PaymentConfirmedHandler>();
 builder.Services.AddScoped<BudgetRejectedHandler>();
+builder.Services.AddScoped<BudgetApprovedHandler>();
 
 // ── API ───────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();

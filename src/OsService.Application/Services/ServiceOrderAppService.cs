@@ -59,27 +59,59 @@ public class ServiceOrderAppService(
         return MapToResponse(order);
     }
 
+    /// <summary>
+    /// Envia a OS para aprovação de orçamento.
+    /// Publica OsSentForApprovalEvent com os itens diagnosticados —
+    /// o BillingService consumirá esse evento para popular o Budget automaticamente.
+    /// </summary>
     public async Task<ServiceOrderResponse> SendForApprovalAsync(Guid id, CancellationToken ct = default)
     {
         var order = await GetOrThrowAsync(id, ct);
         order.SendForApproval();
         await repository.UpdateAsync(order, ct);
+        await PublishDomainEventsAsync(order, ct);
         return MapToResponse(order);
     }
 
+    /// <summary>
+    /// Inicia a execução do serviço (normalmente acionado automaticamente via BudgetApprovedEvent).
+    /// Publica OsExecutionStartedEvent para notificar o ExecutionService.
+    /// Pode ser chamado manualmente pelo Administrador como override.
+    /// </summary>
     public async Task<ServiceOrderResponse> StartExecutionAsync(Guid id, CancellationToken ct = default)
     {
         var order = await GetOrThrowAsync(id, ct);
         order.StartExecution();
         await repository.UpdateAsync(order, ct);
+        await PublishDomainEventsAsync(order, ct);
         return MapToResponse(order);
     }
 
+    /// <summary>
+    /// Finaliza o serviço (marca como concluído, aguardando entrega).
+    /// No fluxo do Saga, será acionado pelo ExecutionCompletedEvent do ExecutionService.
+    /// Pode ser chamado manualmente pelo Administrador como override.
+    /// </summary>
     public async Task<ServiceOrderResponse> FinishAsync(Guid id, CancellationToken ct = default)
     {
         var order = await GetOrThrowAsync(id, ct);
         order.Finish();
         await repository.UpdateAsync(order, ct);
+        await PublishDomainEventsAsync(order, ct);
+        return MapToResponse(order);
+    }
+
+    /// <summary>
+    /// Registra a entrega do veículo ao cliente.
+    /// No fluxo do Saga, acionado pelo PaymentConfirmedEvent via PaymentConfirmedHandler.
+    /// Publica OsClosedEvent.
+    /// </summary>
+    public async Task<ServiceOrderResponse> DeliverAsync(Guid id, CancellationToken ct = default)
+    {
+        var order = await GetOrThrowAsync(id, ct);
+        order.Deliver();
+        await repository.UpdateAsync(order, ct);
+        await PublishDomainEventsAsync(order, ct);
         return MapToResponse(order);
     }
 
@@ -120,5 +152,4 @@ public class ServiceOrderAppService(
         order.History.Select(h => new ServiceOrderHistoryResponse(h.Status, h.Note, h.OccurredAt)),
         order.Items.Select(i => new ServiceOrderItemResponse(i.Id, i.ServiceName, i.Price, i.Quantity))
     );
-
 }

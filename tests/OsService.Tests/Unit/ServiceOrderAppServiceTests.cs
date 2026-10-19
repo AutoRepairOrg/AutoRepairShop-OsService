@@ -156,8 +156,10 @@ public class ServiceOrderAppServiceTests
     {
         var order = MakeOrder();
         order.StartDiagnosis();
+        order.AddItem("Troca de óleo", 150m);
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
+        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
 
         var result = await _sut.SendForApprovalAsync(order.Id);
 
@@ -171,9 +173,12 @@ public class ServiceOrderAppServiceTests
     {
         var order = MakeOrder();
         order.StartDiagnosis();
+        order.AddItem("Troca de óleo", 150m);
         order.SendForApproval();
+        order.ClearDomainEvents();
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
+        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
 
         var result = await _sut.StartExecutionAsync(order.Id);
 
@@ -187,10 +192,14 @@ public class ServiceOrderAppServiceTests
     {
         var order = MakeOrder();
         order.StartDiagnosis();
+        order.AddItem("Troca de óleo", 150m);
         order.SendForApproval();
+        order.ClearDomainEvents();
         order.StartExecution();
+        order.ClearDomainEvents();
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
+        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
 
         var result = await _sut.FinishAsync(order.Id);
 
@@ -220,10 +229,14 @@ public class ServiceOrderAppServiceTests
     {
         var order = MakeOrder();
         order.StartDiagnosis();
+        order.AddItem("Troca de óleo", 150m);
         order.SendForApproval();
+        order.ClearDomainEvents();
         order.StartExecution();
+        order.ClearDomainEvents();
         order.Finish();
         order.Deliver();
+        order.ClearDomainEvents();
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
 
         var act = async () => await _sut.CancelAsync(order.Id, "Motivo");
