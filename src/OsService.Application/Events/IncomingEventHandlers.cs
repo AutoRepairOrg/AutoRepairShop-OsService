@@ -13,21 +13,38 @@ public class PaymentConfirmedHandler(
 {
     /// <summary>
     /// Consumido quando BillingService confirma pagamento.
-    /// Finaliza o serviço (Finish) e registra a entrega (Deliver).
-    /// TODO: quando ExecutionService existir, Finish() deve ser acionado por
-    ///       ExecutionCompletedEvent (via ExecutionCompletedHandler) e este handler
-    ///       deve chamar apenas Deliver().
+    /// A OS já está Finished (ExecutionCompletedHandler). Aqui só entrega o veículo.
     /// </summary>
     public async Task HandleAsync(Guid osId, CancellationToken ct = default)
     {
         var order = await repository.GetByIdAsync(osId, ct)
             ?? throw new KeyNotFoundException($"OS {osId} não encontrada ao processar PaymentConfirmed.");
 
-        order.Finish();
         order.Deliver();
         await repository.UpdateAsync(order, ct);
 
-        // Publica OsClosedEvent (gerado por Deliver())
+        foreach (var @event in order.DomainEvents)
+            await eventPublisher.PublishAsync(@event, ct);
+        order.ClearDomainEvents();
+    }
+}
+
+public class ExecutionCompletedHandler(
+    IServiceOrderRepository repository,
+    IEventPublisher eventPublisher)
+{
+    /// <summary>
+    /// Consumido quando ExecutionService conclui o serviço na oficina.
+    /// Finaliza a OS (InExecution → Finished). A entrega fica para o PaymentConfirmed.
+    /// </summary>
+    public async Task HandleAsync(Guid osId, CancellationToken ct = default)
+    {
+        var order = await repository.GetByIdAsync(osId, ct)
+            ?? throw new KeyNotFoundException($"OS {osId} não encontrada ao processar ExecutionCompleted.");
+
+        order.Finish();
+        await repository.UpdateAsync(order, ct);
+
         foreach (var @event in order.DomainEvents)
             await eventPublisher.PublishAsync(@event, ct);
         order.ClearDomainEvents();
@@ -56,8 +73,8 @@ public class BudgetApprovedHandler(
 {
     /// <summary>
     /// Consumido quando BillingService confirma aprovação do orçamento pelo cliente.
-    /// Inicia automaticamente a execução do serviço e publica OsExecutionStartedEvent,
-    /// que será consumido pelo ExecutionService.
+    /// WaitingApproval → InExecution e publica OsExecutionStartedEvent para o ExecutionService.
+    /// Este é o único caminho válido para iniciar execução.
     /// </summary>
     public async Task HandleAsync(Guid osId, CancellationToken ct = default)
     {

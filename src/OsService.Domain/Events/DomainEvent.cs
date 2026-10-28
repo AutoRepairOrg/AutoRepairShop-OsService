@@ -26,7 +26,11 @@ public record OsItemPayload(string ServiceName, decimal Price, int Quantity);
 /// Publicado quando a OS é enviada para aprovação de orçamento.
 /// Carrega os itens diagnosticados para que o BillingService popule o Budget automaticamente.
 /// </summary>
-public record OsSentForApprovalEvent(Guid OsId, IReadOnlyList<OsItemPayload> Items)
+public record OsSentForApprovalEvent(
+    Guid OsId,
+    string CustomerName,
+    string VehiclePlate,
+    IReadOnlyList<OsItemPayload> Items)
     : DomainEvent(OsId);
 
 /// <summary>
