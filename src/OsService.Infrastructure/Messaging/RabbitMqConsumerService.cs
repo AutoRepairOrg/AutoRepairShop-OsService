@@ -16,7 +16,7 @@ namespace OsService.Infrastructure.Messaging;
 ///   billing-service-events     → os-service-billing-events
 ///     PaymentConfirmedEvent, BudgetRejectedEvent, BudgetApprovedEvent
 ///   execution-service-events   → os-service-execution-events
-///     ExecutionCompletedEvent
+///     ExecutionCompletedEvent, ExecutionFailedEvent
 /// </summary>
 public class RabbitMqConsumerService(
     IConnection connection,
@@ -46,7 +46,7 @@ public class RabbitMqConsumerService(
 
         await DeclareAndBindAsync(
             ExecExchange, ExecQueue,
-            ["ExecutionCompletedEvent"],
+            ["ExecutionCompletedEvent", "ExecutionFailedEvent"],
             stoppingToken);
 
         await _channel.BasicQosAsync(0, 1, false, stoppingToken);
@@ -128,6 +128,15 @@ public class RabbitMqConsumerService(
                     await handler.HandleAsync(msg.OsId);
                     break;
                 }
+                case "ExecutionFailedEvent":
+                {
+                    var msg = JsonSerializer.Deserialize<IncomingExecutionFailed>(body, JsonOptions)
+                        ?? throw new InvalidOperationException("Payload ExecutionFailedEvent inválido.");
+
+                    var handler = scope.ServiceProvider.GetRequiredService<ExecutionFailedHandler>();
+                    await handler.HandleAsync(msg.OsId, msg.Reason);
+                    break;
+                }
                 default:
                     logger.LogWarning("Routing key ignorada: {RoutingKey}", routingKey);
                     break;
@@ -156,4 +165,5 @@ public class RabbitMqConsumerService(
     private sealed record IncomingBudgetRejected(Guid OsId, string Reason);
     private sealed record IncomingBudgetApproved(Guid OsId);
     private sealed record IncomingExecutionCompleted(Guid OsId);
+    private sealed record IncomingExecutionFailed(Guid OsId, string Reason);
 }

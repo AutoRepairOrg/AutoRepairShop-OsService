@@ -51,6 +51,28 @@ public class ExecutionCompletedHandler(
     }
 }
 
+public class ExecutionFailedHandler(
+    IServiceOrderRepository repository,
+    IEventPublisher eventPublisher)
+{
+    /// <summary>
+    /// Consumido quando ExecutionService registra falha na oficina.
+    /// Cancela a OS e publica OsCancelledEvent para compensar Billing e Execution.
+    /// </summary>
+    public async Task HandleAsync(Guid osId, string reason, CancellationToken ct = default)
+    {
+        var order = await repository.GetByIdAsync(osId, ct)
+            ?? throw new KeyNotFoundException($"OS {osId} não encontrada ao processar ExecutionFailed.");
+
+        order.Cancel($"Execução falhou: {reason}");
+        await repository.UpdateAsync(order, ct);
+
+        foreach (var @event in order.DomainEvents)
+            await eventPublisher.PublishAsync(@event, ct);
+        order.ClearDomainEvents();
+    }
+}
+
 public class BudgetRejectedHandler(IServiceOrderRepository repository)
 {
     /// <summary>

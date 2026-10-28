@@ -43,6 +43,7 @@ builder.Services.AddScoped<PaymentConfirmedHandler>();
 builder.Services.AddScoped<BudgetRejectedHandler>();
 builder.Services.AddScoped<BudgetApprovedHandler>();
 builder.Services.AddScoped<ExecutionCompletedHandler>();
+builder.Services.AddScoped<ExecutionFailedHandler>();
 
 // ── API ───────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
