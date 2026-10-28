@@ -85,7 +85,7 @@ public class ServiceOrder
         var itemPayloads = _items
             .Select(i => new OsItemPayload(i.ServiceName, i.Price, i.Quantity))
             .ToList();
-        AddDomainEvent(new OsSentForApprovalEvent(Id, itemPayloads));
+        AddDomainEvent(new OsSentForApprovalEvent(Id, CustomerName, VehiclePlate, itemPayloads));
     }
 
     public void StartExecution()

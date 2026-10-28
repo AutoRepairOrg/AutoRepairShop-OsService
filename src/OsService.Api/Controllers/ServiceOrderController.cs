@@ -87,10 +87,8 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
         => await ExecuteStatusChange(() => appService.SendForApprovalAsync(id, ct));
 
     /// <summary>
-    /// [Override manual] Inicia execução do serviço (WaitingApproval → InExecution).
-    /// No fluxo normal do Saga, este passo é acionado automaticamente pelo BudgetApprovedEvent.
-    /// Use este endpoint apenas como override administrativo.
-    /// Publica OsExecutionStartedEvent para o ExecutionService.
+    /// Não inicia a execução pela API. Após BudgetApprovedEvent a OS já vai para InExecution
+    /// e publica OsExecutionStartedEvent. Recusar este PATCH evita executar sem orçamento aprovado.
     /// </summary>
     [HttpPatch("{id:guid}/start-execution")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]

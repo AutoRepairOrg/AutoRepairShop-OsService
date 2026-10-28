@@ -10,7 +10,7 @@ namespace OsService.Infrastructure.Messaging;
 /// Implementação do IEventPublisher usando RabbitMQ.
 /// Troque por SqsEventPublisher se preferir AWS SQS.
 /// </summary>
-public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, IAsyncDisposable
+public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, IAsyncDisposable, IDisposable
 {
     private IChannel? _channel;
 
@@ -51,5 +51,8 @@ public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, I
     {
         if (_channel is not null)
             await _channel.DisposeAsync();
+        _channel = null;
     }
+
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
 }

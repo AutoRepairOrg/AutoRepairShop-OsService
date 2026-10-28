@@ -169,20 +169,20 @@ public class ServiceOrderAppServiceTests
     // ── StartExecutionAsync ──────────────────────────────────────────────────
 
     [Fact]
-    public async Task StartExecutionAsync_FromWaitingApproval_ShouldTransition()
+    public async Task StartExecutionAsync_ShouldNotSkipBudgetApproval()
     {
         var order = MakeOrder();
         order.StartDiagnosis();
         order.AddItem("Troca de óleo", 150m);
         order.SendForApproval();
-        order.ClearDomainEvents();
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
-        _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
-        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
 
-        var result = await _sut.StartExecutionAsync(order.Id);
+        var act = async () => await _sut.StartExecutionAsync(order.Id);
 
-        result.Status.Should().Be(ServiceOrderStatus.InExecution.ToString());
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*aprovação do orçamento*");
+        order.Status.Should().Be(ServiceOrderStatus.WaitingApproval);
+        _repo.Verify(r => r.UpdateAsync(It.IsAny<ServiceOrder>(), default), Times.Never);
     }
 
     // ── FinishAsync ──────────────────────────────────────────────────────────

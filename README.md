@@ -37,15 +37,20 @@ Received → InDiagnosis → WaitingApproval → InExecution → Finished → De
 
 | Evento | Quando | Consumidor |
 |---|---|---|
-| `OsCreatedEvent` | OS criada | BillingService |
+| `OsSentForApprovalEvent` | Diagnóstico ok + itens + send-for-approval | BillingService (cria e popula o Budget) |
+| `OsExecutionStartedEvent` | Após aprovação do orçamento | ExecutionService |
 | `OsCancelledEvent` | OS cancelada | BillingService, ExecutionService |
 | `OsClosedEvent` | OS entregue | — |
+
+`OsCreatedEvent` continua no domínio, mas não envia a OS ao Billing.
 
 ### Eventos consumidos
 
 | Evento | Origem | Ação |
 |---|---|---|
-| `PaymentConfirmed` | BillingService | Fecha e entrega a OS |
+| `BudgetApproved` | BillingService | Inicia a execução e publica `OsExecutionStartedEvent` |
+| `ExecutionCompleted` | ExecutionService | Finaliza a OS (`Finish`) |
+| `PaymentConfirmed` | BillingService | Entrega a OS (`Deliver`) |
 | `BudgetRejected` | BillingService | Cancela a OS (compensação) |
 
 ## Endpoints REST

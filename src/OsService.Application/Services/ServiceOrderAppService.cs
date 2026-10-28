@@ -74,17 +74,15 @@ public class ServiceOrderAppService(
     }
 
     /// <summary>
-    /// Inicia a execução do serviço (normalmente acionado automaticamente via BudgetApprovedEvent).
-    /// Publica OsExecutionStartedEvent para notificar o ExecutionService.
-    /// Pode ser chamado manualmente pelo Administrador como override.
+    /// Endpoint HTTP não inicia a execução: isso só ocorre via BudgetApprovedEvent.
+    /// Impede pular a aprovação do cliente enquanto a OS está em WaitingApproval.
     /// </summary>
     public async Task<ServiceOrderResponse> StartExecutionAsync(Guid id, CancellationToken ct = default)
     {
-        var order = await GetOrThrowAsync(id, ct);
-        order.StartExecution();
-        await repository.UpdateAsync(order, ct);
-        await PublishDomainEventsAsync(order, ct);
-        return MapToResponse(order);
+        await GetOrThrowAsync(id, ct);
+        throw new InvalidOperationException(
+            "A execução inicia automaticamente após a aprovação do orçamento pelo cliente (BudgetApprovedEvent). " +
+            "Não é permitido iniciar a execução enquanto a OS aguarda essa aprovação.");
     }
 
     /// <summary>
