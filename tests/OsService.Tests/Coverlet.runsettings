@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>opencover</Format>
+          <!-- Migrations = código gerado; RabbitMq* = adapters de integração (precisam do broker). -->
+          <ExcludeByFile>**/Migrations/**/*.cs</ExcludeByFile>
+          <Exclude>[OsService.Infrastructure]OsService.Infrastructure.Messaging.RabbitMq*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
