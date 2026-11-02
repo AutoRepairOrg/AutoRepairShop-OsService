@@ -147,4 +147,39 @@ public class IncomingEventHandlerTests
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
+
+    // ── ExecutionFailedHandler ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task ExecutionFailedHandler_ShouldCancelOsAndPublishOsCancelledEvent()
+    {
+        var order = MakeOrderAt(ServiceOrderStatus.InExecution);
+        _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
+        _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
+        _publisher.Setup(p => p.PublishAsync(It.IsAny<OsService.Domain.Events.DomainEvent>(), default))
+                  .Returns(Task.CompletedTask);
+
+        var handler = new ExecutionFailedHandler(_repo.Object, _publisher.Object);
+        await handler.HandleAsync(order.Id, "Peça indisponível");
+
+        order.Status.Should().Be(ServiceOrderStatus.Canceled);
+        _repo.Verify(r => r.UpdateAsync(It.IsAny<ServiceOrder>(), default), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(
+            It.Is<OsService.Domain.Events.DomainEvent>(e =>
+                e.GetType() == typeof(OsService.Domain.Events.OsCancelledEvent) &&
+                ((OsService.Domain.Events.OsCancelledEvent)e).OsId == order.Id &&
+                ((OsService.Domain.Events.OsCancelledEvent)e).Reason.Contains("Peça indisponível")),
+            default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecutionFailedHandler_OrderNotFound_ShouldThrow()
+    {
+        _repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((ServiceOrder?)null);
+
+        var handler = new ExecutionFailedHandler(_repo.Object, _publisher.Object);
+        var act = async () => await handler.HandleAsync(Guid.NewGuid(), "Motivo");
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
 }
