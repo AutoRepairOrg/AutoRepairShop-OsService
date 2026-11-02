@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using OsService.Domain.Entities.ServiceOrder;
 using OsService.Domain.Enums;
@@ -11,13 +12,14 @@ namespace OsService.Tests.Unit;
 /// </summary>
 public class ServiceOrderRepositoryConcurrencyTests : IAsyncLifetime
 {
-    private readonly string _dbName = $"OsServiceConcurrency_{Guid.NewGuid():N}";
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    public ServiceOrderRepositoryConcurrencyTests() => _connection.Open();
 
     private OsDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<OsDbContext>()
-            .UseSqlServer(
-                $"Server=(localdb)\\MSSQLLocalDB;Database={_dbName};Trusted_Connection=True;TrustServerCertificate=True")
+            .UseSqlite(_connection)
             .Options;
 
         var ctx = new OsDbContext(options);
@@ -25,11 +27,7 @@ public class ServiceOrderRepositoryConcurrencyTests : IAsyncLifetime
         return ctx;
     }
 
-    public async Task DisposeAsync()
-    {
-        await using var ctx = CreateContext();
-        await ctx.Database.EnsureDeletedAsync();
-    }
+    public async Task DisposeAsync() => await _connection.DisposeAsync();
 
     public Task InitializeAsync() => Task.CompletedTask;
 
