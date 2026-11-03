@@ -82,7 +82,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.AUTOREPAIR_TOKEN }}
 
       - name: Push image
         if: github.ref == 'refs/heads/master'
@@ -127,7 +127,7 @@ jobs:
     steps:
       - name: Apply branch protection rules
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.AUTOREPAIR_TOKEN }}
         run: |
           gh api \
             --method PUT \
