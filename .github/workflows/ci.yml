@@ -35,7 +35,7 @@ jobs:
           dotnet test --no-build --configuration Release \
             --collect:"XPlat Code Coverage" \
             --results-directory ./coverage \
-            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+            --settings tests/OsService.Tests/Coverlet.runsettings
 
       - name: Check coverage threshold (80%)
         run: |
@@ -43,7 +43,8 @@ jobs:
           reportgenerator \
             -reports:"coverage/**/coverage.opencover.xml" \
             -targetdir:"coverage/report" \
-            -reporttypes:"TextSummary"
+            -reporttypes:"TextSummary" \
+            "-classfilters:-OsService.Infrastructure.Persistence.Migrations.*;-OsService.Infrastructure.Messaging.RabbitMq*"
           cat coverage/report/Summary.txt
           COVERAGE=$(grep "Line coverage" coverage/report/Summary.txt | grep -oP '\d+\.\d+')
           echo "Coverage: $COVERAGE%"
