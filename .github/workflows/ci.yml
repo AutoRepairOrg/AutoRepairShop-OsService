@@ -121,6 +121,23 @@ jobs:
           mkdir -p "$HOME/.kube"
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
 
+      - name: Configure GHCR pull secret
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          if [ -z "$GHCR_TOKEN" ]; then
+            echo "Secret GHCR_TOKEN ausente. Cole o personal access token nesse secret."
+            exit 1
+          fi
+          kubectl create secret docker-registry ghcr-pull \
+            --namespace autorepair \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="$GHCR_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch deployment os-service -n autorepair --type strategic \
+            -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-pull"}]}}}}'
+
       - name: Deploy
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
