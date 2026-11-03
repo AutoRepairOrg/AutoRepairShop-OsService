@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: os-service
-          image: DOCKERHUB_USERNAME/os-service:latest
+          image: ghcr.io/autorepairorg/os-service:latest
           ports:
             - containerPort: 8080
           env:
