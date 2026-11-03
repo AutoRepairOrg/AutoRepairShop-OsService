@@ -1,3 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: autorepair
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +11,7 @@ metadata:
   labels:
     app: os-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: os-service
@@ -25,27 +30,45 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
+            - name: Messaging__UseStub
+              value: "false"
             - name: ConnectionStrings__OsDatabase
-              valueFrom:
-                secretKeyRef:
-                  name: os-service-secrets
-                  key: db-connection-string
+              value: "Server=127.0.0.1,1433;Database=OsServiceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
             - name: RabbitMQ__Host
               valueFrom:
                 configMapKeyRef:
                   name: os-service-config
                   key: rabbitmq-host
+            - name: RabbitMQ__Port
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: rabbitmq-port
+            - name: RabbitMQ__User
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: rabbitmq-user
+            - name: RabbitMQ__Password
+              valueFrom:
+                configMapKeyRef:
+                  name: os-service-config
+                  key: rabbitmq-password
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 36
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 10
             periodSeconds: 5
           resources:
             requests:
@@ -54,6 +77,36 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              value: "YourStrong@Passw0rd"
+            - name: MSSQL_PID
+              value: "Developer"
+          volumeMounts:
+            - name: sqlserver-data
+              mountPath: /var/opt/mssql
+          readinessProbe:
+            tcpSocket:
+              port: 1433
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 18
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+      volumes:
+        - name: sqlserver-data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -78,8 +131,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: os-service
-  minReplicas: 2
-  maxReplicas: 10
+  minReplicas: 1
+  maxReplicas: 1
   metrics:
     - type: Resource
       resource:
@@ -96,3 +149,63 @@ metadata:
 data:
   rabbitmq-host: "rabbitmq-service"
   rabbitmq-port: "5672"
+  rabbitmq-user: "autorepair"
+  rabbitmq-password: "autorepair"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: autorepair
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management
+          ports:
+            - containerPort: 5672
+            - containerPort: 15672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: "autorepair"
+            - name: RABBITMQ_DEFAULT_PASS
+              value: "autorepair"
+          readinessProbe:
+            tcpSocket:
+              port: 5672
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+  namespace: autorepair
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+  type: ClusterIP
