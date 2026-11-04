@@ -669,26 +669,34 @@ Abra http://localhost:15672 (`guest` / `guest`). Em **Exchanges** devem aparecer
 
 ## 11. (Opcional) Ligar o CI ao cluster
 
-O job `deploy` do [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) espera o secret `KUBECONFIG` em base64.
+O job `deploy` do [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) **não** usa mais o secret `KUBECONFIG`. No runner ele gera o kubeconfig na hora:
 
 ```bash
-# Linux / macOS / Git Bash
-cat ~/.kube/config | base64 -w 0 > kubeconfig.b64
-
-# PowerShell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.kube\config")) | Out-File kubeconfig.b64
+aws eks update-kubeconfig --name autorepair-eks --region us-east-1
 ```
 
-No GitHub → Settings → Secrets de **cada** repo (`OsService`, `BillingService`):
+No Learner Lab: **Start Lab** (círculo verde) → **AWS Details**. Copie Access Key, Secret Key e Session Token.
+
+No GitHub → Settings → Secrets and variables → Actions de **cada** repo (`OsService`, `BillingService`, `ExecutionService`):
 
 | Secret | Valor |
 |---|---|
-| `KUBECONFIG` | conteúdo de `kubeconfig.b64` |
-| `DOCKERHUB_USERNAME` | seu usuário |
+| `AWS_ACCESS_KEY_ID` | AWS Access Key ID do lab |
+| `AWS_SECRET_ACCESS_KEY` | AWS Secret Access Key do lab |
+| `AWS_SESSION_TOKEN` | AWS Session Token do lab |
+| `DOCKERHUB_USERNAME` | seu usuário (se o pipeline ainda usar Docker Hub) |
 | `DOCKERHUB_TOKEN` | access token do Docker Hub |
-| `GH_PAT` | PAT com permissão de admin no repo (branch protection) |
+| `GHCR_TOKEN` / `AUTOREPAIR_TOKEN` | PAT usado pelo pipeline (GHCR / branch protection) |
 
-> No Academy o kubeconfig **expira com a sessão**. Renove o secret a cada lab se for usar o deploy automático.
+> O Session Token do Academy **expira em algumas horas**. Sempre que reiniciar o lab, atualize os três secrets AWS. O secret `KUBECONFIG` pode ficar antigo ou ser apagado — o job não o lê mais.
+
+Antes de reexecutar o Actions, confira no CloudShell:
+
+```bash
+aws eks describe-cluster --name autorepair-eks --region us-east-1 --query 'cluster.status'
+```
+
+Tem que retornar `ACTIVE`. Se der `ResourceNotFoundException`, recrie o cluster antes do deploy.
 
 ---
 

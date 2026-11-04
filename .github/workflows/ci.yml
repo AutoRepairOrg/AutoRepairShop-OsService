@@ -114,12 +114,13 @@ jobs:
 
       - name: Configure kubeconfig
         run: |
-          if [ -z "${{ secrets.KUBECONFIG }}" ]; then
-            echo "Secret KUBECONFIG ausente. Grave o kubeconfig em base64 neste repositório."
+          # Gera kubeconfig fresco a partir do cluster atual (Academy muda o endpoint a cada recreate).
+          if ! STATUS=$(aws eks describe-cluster --name autorepair-eks --region us-east-1 --query 'cluster.status' --output text); then
+            echo "Cluster autorepair-eks inacessível. Recrie o cluster no Academy e atualize os secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY e AWS_SESSION_TOKEN."
             exit 1
           fi
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+          echo "Cluster autorepair-eks: ${STATUS}"
+          aws eks update-kubeconfig --name autorepair-eks --region us-east-1
 
       - name: Deploy
         run: |
