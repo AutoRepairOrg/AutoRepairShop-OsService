@@ -119,7 +119,7 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-  type: ClusterIP
+  type: LoadBalancer
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
