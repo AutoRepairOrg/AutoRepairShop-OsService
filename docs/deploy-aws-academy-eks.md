@@ -686,7 +686,19 @@ No GitHub → Settings → Secrets and variables → Actions de **cada** repo (`
 | `AWS_SESSION_TOKEN` | AWS Session Token do lab |
 | `DOCKERHUB_USERNAME` | seu usuário (se o pipeline ainda usar Docker Hub) |
 | `DOCKERHUB_TOKEN` | access token do Docker Hub |
-| `GHCR_TOKEN` / `AUTOREPAIR_TOKEN` | PAT usado pelo pipeline (GHCR / branch protection) |
+| `GHCR_TOKEN` / `AUTOREPAIR_TOKEN` | PAT com `read:packages` + `write:packages` (push GHCR, pull nos nodes, branch protection) |
+
+O job de deploy cria/atualiza o secret Kubernetes `ghcr-pull` a partir desse PAT. Se precisar criar à mão no CloudShell:
+
+```bash
+kubectl create secret docker-registry ghcr-pull \
+  -n autorepair \
+  --docker-server=ghcr.io \
+  --docker-username=SEU_USUARIO_GITHUB \
+  --docker-password=SEU_PAT \
+  --docker-email=seu@email.com
+kubectl delete pods -n autorepair -l app=os-service
+```
 
 > O Session Token do Academy **expira em algumas horas**. Sempre que reiniciar o lab, atualize os três secrets AWS. O secret `KUBECONFIG` pode ficar antigo ou ser apagado — o job não o lê mais.
 

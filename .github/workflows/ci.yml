@@ -122,6 +122,23 @@ jobs:
           echo "Cluster autorepair-eks: ${STATUS}"
           aws eks update-kubeconfig --name autorepair-eks --region us-east-1
 
+      - name: Ensure GHCR pull secret
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          if [ -z "$GHCR_TOKEN" ]; then
+            echo "Secret GHCR_TOKEN ausente — necessário para o imagePullSecret ghcr-pull."
+            exit 1
+          fi
+          kubectl create namespace autorepair --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry ghcr-pull \
+            --namespace autorepair \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="$GHCR_TOKEN" \
+            --docker-email="${{ github.actor }}@users.noreply.github.com" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -129,7 +146,7 @@ jobs:
           kubectl set image deployment/os-service \
             os-service=ghcr.io/${OWNER}/os-service:${{ github.sha }} \
             -n autorepair
-          kubectl rollout status deployment/os-service -n autorepair --timeout=300s
+          kubectl rollout status deployment/os-service -n autorepair --timeout=420s
           kubectl rollout status deployment/rabbitmq -n autorepair --timeout=180s
 
   branch-protection:
