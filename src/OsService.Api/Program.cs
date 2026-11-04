@@ -46,6 +46,9 @@ builder.Services.AddScoped<ExecutionCompletedHandler>();
 builder.Services.AddScoped<ExecutionFailedHandler>();
 
 // ── API ───────────────────────────────────────────────────────────────────────
+// TODO(Fase futura): autenticação/autorização JWT (reaproveitar AutoRepairShop-Api / AutoRepairShop-Lambda da Fase 3).
+// Nesta fase o foco é microsserviços, Saga (RabbitMQ) e deploy K8s; endpoints de negócio ficam abertos.
+// Ao habilitar [Authorize], manter AllowAnonymous em /health (e no webhook de pagamento no Billing).
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
