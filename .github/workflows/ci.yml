@@ -152,13 +152,10 @@ jobs:
   branch-protection:
     name: Configure Branch Protection
     runs-on: ubuntu-latest
-    # LAB: corre em qualquer push (não depende do deploy) para tirar a proteção
-    # já aplicada em master. Antes da entrega, voltar a needs: deploy e ao PUT comentado.
-    if: github.event_name == 'push'
-    continue-on-error: true
+    needs: deploy
 
     steps:
-      - name: Clear branch protection (lab)
+      - name: Apply branch protection
         env:
           GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
@@ -166,34 +163,26 @@ jobs:
             echo "Secret GHCR_TOKEN ausente — branch protection não alterada."
             exit 1
           fi
-          # Remove required status checks + required review para push direto em master.
           gh api \
-            --method DELETE \
+            --method PUT \
             -H "Accept: application/vnd.github+json" \
             /repos/${{ github.repository }}/branches/master/protection \
-            || echo "Sem proteção ativa ou sem permissão — seguindo."
-
-          # Reativar na entrega final:
-          # gh api \
-          #   --method PUT \
-          #   -H "Accept: application/vnd.github+json" \
-          #   /repos/${{ github.repository }}/branches/master/protection \
-          #   --input - <<EOF
-          # {
-          #   "required_status_checks": {
-          #     "strict": true,
-          #     "contexts": [
-          #       "Build, Test & Quality",
-          #       "Docker Build"
-          #     ]
-          #   },
-          #   "enforce_admins": true,
-          #   "required_pull_request_reviews": {
-          #     "required_approving_review_count": 1,
-          #     "dismiss_stale_reviews": true
-          #   },
-          #   "restrictions": null,
-          #   "allow_force_pushes": false,
-          #   "allow_deletions": false
-          # }
-          # EOF
+            --input - <<EOF
+          {
+            "required_status_checks": {
+              "strict": true,
+              "contexts": [
+                "Build, Test & Quality",
+                "Docker Build"
+              ]
+            },
+            "enforce_admins": true,
+            "required_pull_request_reviews": {
+              "required_approving_review_count": 1,
+              "dismiss_stale_reviews": true
+            },
+            "restrictions": null,
+            "allow_force_pushes": false,
+            "allow_deletions": false
+          }
+          EOF
