@@ -113,10 +113,6 @@ kind: Service
 metadata:
   name: os-service
   namespace: autorepair
-  annotations:
-    # Classic ELB (Academy). TCP evita OutOfService por HTTP em "/".
-    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "TCP"
-    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "traffic-port"
 spec:
   selector:
     app: os-service
