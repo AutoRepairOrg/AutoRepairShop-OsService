@@ -23,12 +23,11 @@ public class ServiceOrderTests
     }
 
     [Fact]
-    public void Create_ShouldPublishOsCreatedEvent()
+    public void Create_ShouldNotRaiseDomainEvent()
     {
         var order = CreateValidOrder();
 
-        order.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<OsCreatedEvent>();
+        order.DomainEvents.Should().BeEmpty();
     }
 
     [Theory]
@@ -121,6 +120,7 @@ public class ServiceOrderTests
     public void AddItem_ShouldCalculateTotal()
     {
         var order = CreateValidOrder();
+        order.StartDiagnosis();
         order.AddItem("Troca de óleo", 150m, 1);
         order.AddItem("Filtro de ar", 80m, 2);
 
@@ -128,9 +128,21 @@ public class ServiceOrderTests
     }
 
     [Fact]
+    public void AddItem_BeforeDiagnosis_ShouldThrow()
+    {
+        var order = CreateValidOrder();
+
+        var act = () => order.AddItem("Troca de óleo", 150m);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*diagnóstico*");
+    }
+
+    [Fact]
     public void AddItem_WithNegativePrice_ShouldThrow()
     {
         var order = CreateValidOrder();
+        order.StartDiagnosis();
         var act = () => order.AddItem("Serviço", -10m, 1);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }

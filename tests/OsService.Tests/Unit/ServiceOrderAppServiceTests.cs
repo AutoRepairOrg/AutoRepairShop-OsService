@@ -28,13 +28,12 @@ public class ServiceOrderAppServiceTests
     // ── CreateAsync ─────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task CreateAsync_ShouldPersistAndPublishEvent()
+    public async Task CreateAsync_ShouldPersistWithoutPublishingEvent()
     {
         var request = new CreateServiceOrderRequest(
             "João Silva", "11999999999", "ABC1234", "Toyota Corolla", null);
 
         _repo.Setup(r => r.AddAsync(It.IsAny<ServiceOrder>(), default)).Returns(Task.CompletedTask);
-        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
 
         var result = await _sut.CreateAsync(request);
 
@@ -43,7 +42,7 @@ public class ServiceOrderAppServiceTests
         result.Status.Should().Be(ServiceOrderStatus.Received.ToString());
 
         _repo.Verify(r => r.AddAsync(It.IsAny<ServiceOrder>(), default), Times.Once);
-        _publisher.Verify(p => p.PublishAsync(It.IsAny<DomainEvent>(), default), Times.Once);
+        _publisher.Verify(p => p.PublishAsync(It.IsAny<DomainEvent>(), default), Times.Never);
     }
 
     [Fact]
@@ -101,6 +100,7 @@ public class ServiceOrderAppServiceTests
     public async Task AddItemAsync_ShouldAddItemAndPersist()
     {
         var order = MakeOrder();
+        order.StartDiagnosis();
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
 
@@ -120,6 +120,19 @@ public class ServiceOrderAppServiceTests
         var act = async () => await _sut.AddItemAsync(Guid.NewGuid(), new AddItemRequest("Serviço", 100m, 1));
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task AddItemAsync_BeforeDiagnosis_ShouldThrow()
+    {
+        var order = MakeOrder();
+        _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
+
+        var act = async () => await _sut.AddItemAsync(order.Id, new AddItemRequest("Serviço", 100m, 1));
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*diagnóstico*");
+        _repo.Verify(r => r.UpdateAsync(It.IsAny<ServiceOrder>(), default), Times.Never);
     }
 
     // ── StartDiagnosisAsync ──────────────────────────────────────────────────
@@ -166,46 +179,6 @@ public class ServiceOrderAppServiceTests
         result.Status.Should().Be(ServiceOrderStatus.WaitingApproval.ToString());
     }
 
-    // ── StartExecutionAsync ──────────────────────────────────────────────────
-
-    [Fact]
-    public async Task StartExecutionAsync_ShouldNotSkipBudgetApproval()
-    {
-        var order = MakeOrder();
-        order.StartDiagnosis();
-        order.AddItem("Troca de óleo", 150m);
-        order.SendForApproval();
-        _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
-
-        var act = async () => await _sut.StartExecutionAsync(order.Id);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*aprovação do orçamento*");
-        order.Status.Should().Be(ServiceOrderStatus.WaitingApproval);
-        _repo.Verify(r => r.UpdateAsync(It.IsAny<ServiceOrder>(), default), Times.Never);
-    }
-
-    // ── FinishAsync ──────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task FinishAsync_FromInExecution_ShouldTransition()
-    {
-        var order = MakeOrder();
-        order.StartDiagnosis();
-        order.AddItem("Troca de óleo", 150m);
-        order.SendForApproval();
-        order.ClearDomainEvents();
-        order.StartExecution();
-        order.ClearDomainEvents();
-        _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
-        _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
-        _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
-
-        var result = await _sut.FinishAsync(order.Id);
-
-        result.Status.Should().Be(ServiceOrderStatus.Finished.ToString());
-    }
-
     // ── CancelAsync ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -215,7 +188,6 @@ public class ServiceOrderAppServiceTests
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
         _publisher.Setup(p => p.PublishAsync(It.IsAny<DomainEvent>(), default)).Returns(Task.CompletedTask);
-        order.ClearDomainEvents(); // limpa OsCreatedEvent da criação antes de cancelar
 
         var result = await _sut.CancelAsync(order.Id, "Cliente desistiu");
 

@@ -79,7 +79,8 @@ public class ServiceOrderRepositoryConcurrencyTests : IAsyncLifetime
         {
             var repo = new ServiceOrderRepository(ctx);
             var loaded = await repo.GetByIdAsync(orderId);
-            loaded!.AddItem("Troca de óleo", 150m, 1);
+            loaded!.StartDiagnosis();
+            loaded.AddItem("Troca de óleo", 150m, 1);
 
             var act = async () => await repo.UpdateAsync(loaded);
             await act.Should().NotThrowAsync();

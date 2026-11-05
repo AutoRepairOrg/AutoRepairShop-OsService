@@ -646,12 +646,12 @@ Use o mesmo fluxo de [roteiro-teste-swagger.md](../roteiro-teste-swagger.md), tr
 | 5 | Os | `PATCH .../send-for-approval` | `WaitingApproval` + itens no Budget |
 | 6 | Billing | `POST /api/Budget/{id}/send` | `Sent` |
 | 7 | Billing | `POST /api/Budget/{id}/approve` | OS → `InExecution` |
-| 8 | Os | `PATCH .../finish` *(sem ExecutionService)* | `Finished` |
-| 9 | Billing | `POST /api/Payment/checkout/{osId}` | `checkoutUrl` stub |
+| 8 | Execution | `PATCH /api/Execution/os/{osId}/complete` | OS → `Finished` e checkout criado |
+| 9 | Billing | `GET /api/Payment/os/{osId}` | Payment `Pending` e `checkoutUrl` |
 | 10 | Billing | `POST /api/Payment/webhook` `id=approved:{paymentId}` | Payment `Confirmed` |
 | 11 | Os | `GET /api/ServiceOrder/{id}` | `Delivered` |
 
-> **Atenção:** se o `PaymentConfirmedHandler` do OsService ainda fizer `Finish() + Deliver()`, **não** chame `PATCH /finish` no passo 8 — o webhook quebra se a OS já estiver `Finished`. Siga o aviso do roteiro local.
+A OS não tem mais `PATCH /finish` nem `PATCH /deliver`. Quem finaliza é o `ExecutionCompletedEvent`. Quem entrega é o `PaymentConfirmedEvent`.
 
 ### Compensação rápida (opcional)
 

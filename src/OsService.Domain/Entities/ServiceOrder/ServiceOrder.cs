@@ -50,7 +50,6 @@ public class ServiceOrder
         CreatedAt = DateTime.UtcNow;
 
         AddHistory("OS criada e recebida.");
-        AddDomainEvent(new OsCreatedEvent(Id, customerName, vehiclePlate));
     }
 
     public static ServiceOrder Create(
@@ -105,7 +104,6 @@ public class ServiceOrder
     {
         EnsureStatus(ServiceOrderStatus.Finished, "Entrega só possível após conclusão do serviço.");
         UpdateStatus(ServiceOrderStatus.Delivered, "Veículo entregue ao cliente.");
-        AddDomainEvent(new OsClosedEvent(Id));
     }
 
     public void Cancel(string reason)
@@ -121,6 +119,9 @@ public class ServiceOrder
 
     public void AddItem(string serviceName, decimal price, int quantity = 1)
     {
+        if (Status != ServiceOrderStatus.InDiagnosis)
+            throw new InvalidOperationException("Itens só podem ser incluídos depois de iniciar o diagnóstico.");
+
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
         if (price <= 0) throw new ArgumentOutOfRangeException(nameof(price), "Preço deve ser maior que zero.");
         if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity), "Quantidade deve ser maior que zero.");

@@ -11,7 +11,7 @@ public class StubEventPublisherTests
     public async Task PublishAsync_ShouldCompleteWithoutThrowing()
     {
         var sut = new StubEventPublisher(NullLogger<StubEventPublisher>.Instance);
-        var @event = new OsCreatedEvent(Guid.NewGuid(), "Ana", "ABC1D23");
+        var @event = new OsCancelledEvent(Guid.NewGuid(), "Cliente desistiu");
 
         var act = async () => await sut.PublishAsync(@event);
 
