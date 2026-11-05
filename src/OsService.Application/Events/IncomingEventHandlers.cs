@@ -7,9 +7,7 @@ namespace OsService.Application.Events;
 /// Handlers para eventos consumidos do broker (Saga coreografada).
 /// Registrados como consumers do RabbitMQ/SQS na Infrastructure.
 /// </summary>
-public class PaymentConfirmedHandler(
-    IServiceOrderRepository repository,
-    IEventPublisher eventPublisher)
+public class PaymentConfirmedHandler(IServiceOrderRepository repository)
 {
     /// <summary>
     /// Consumido quando BillingService confirma pagamento.
@@ -22,16 +20,10 @@ public class PaymentConfirmedHandler(
 
         order.Deliver();
         await repository.UpdateAsync(order, ct);
-
-        foreach (var @event in order.DomainEvents)
-            await eventPublisher.PublishAsync(@event, ct);
-        order.ClearDomainEvents();
     }
 }
 
-public class ExecutionCompletedHandler(
-    IServiceOrderRepository repository,
-    IEventPublisher eventPublisher)
+public class ExecutionCompletedHandler(IServiceOrderRepository repository)
 {
     /// <summary>
     /// Consumido quando ExecutionService conclui o serviço na oficina.
@@ -44,10 +36,6 @@ public class ExecutionCompletedHandler(
 
         order.Finish();
         await repository.UpdateAsync(order, ct);
-
-        foreach (var @event in order.DomainEvents)
-            await eventPublisher.PublishAsync(@event, ct);
-        order.ClearDomainEvents();
     }
 }
 

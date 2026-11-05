@@ -40,9 +40,8 @@ Received → InDiagnosis → WaitingApproval → InExecution → Finished → De
 | `OsSentForApprovalEvent` | Diagnóstico ok + itens + send-for-approval | BillingService (cria e popula o Budget) |
 | `OsExecutionStartedEvent` | Após aprovação do orçamento | ExecutionService |
 | `OsCancelledEvent` | OS cancelada | BillingService, ExecutionService |
-| `OsClosedEvent` | OS entregue | — |
 
-`OsCreatedEvent` continua no domínio, mas não envia a OS ao Billing.
+Criar a OS, incluir item, iniciar diagnóstico, finalizar e entregar não publicam evento. Finalizar e entregar acontecem só pelos eventos da saga.
 
 ### Eventos consumidos
 
@@ -60,11 +59,9 @@ Received → InDiagnosis → WaitingApproval → InExecution → Finished → De
 | `POST` | `/api/serviceorder` | Cria nova OS |
 | `GET` | `/api/serviceorder/{id}` | Busca OS por ID |
 | `GET` | `/api/serviceorder?status=X` | Lista por status |
-| `POST` | `/api/serviceorder/{id}/items` | Adiciona item à OS |
+| `POST` | `/api/serviceorder/{id}/items` | Adiciona item durante o diagnóstico |
 | `PATCH` | `/api/serviceorder/{id}/start-diagnosis` | Inicia diagnóstico |
 | `PATCH` | `/api/serviceorder/{id}/send-for-approval` | Envia para aprovação |
-| `PATCH` | `/api/serviceorder/{id}/start-execution` | Inicia execução |
-| `PATCH` | `/api/serviceorder/{id}/finish` | Finaliza serviço |
 | `PATCH` | `/api/serviceorder/{id}/cancel` | Cancela OS |
 | `GET` | `/health` | Health check |
 

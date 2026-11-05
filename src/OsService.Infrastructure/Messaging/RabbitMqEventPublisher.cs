@@ -27,7 +27,7 @@ public class RabbitMqEventPublisher(IConnection connection) : IEventPublisher, I
         var channel = await GetChannelAsync();
         var exchangeName = "os-service-events";
         // Usar GetType() (não typeof(TEvent)): quando chamado via DomainEvent base, TEvent é a base.
-        var routingKey = @event.GetType().Name; // e.g. "OsCreatedEvent"
+        var routingKey = @event.GetType().Name; // e.g. "OsSentForApprovalEvent"
 
         await channel.ExchangeDeclareAsync(
             exchange: exchangeName,

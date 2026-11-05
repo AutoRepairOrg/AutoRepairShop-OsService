@@ -40,10 +40,7 @@ public class IncomingEventHandlerTests
         var order = MakeOrderAt(ServiceOrderStatus.Finished);
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
-        _publisher.Setup(p => p.PublishAsync(It.IsAny<OsService.Domain.Events.DomainEvent>(), default))
-                  .Returns(Task.CompletedTask);
-
-        var handler = new PaymentConfirmedHandler(_repo.Object, _publisher.Object);
+        var handler = new PaymentConfirmedHandler(_repo.Object);
         await handler.HandleAsync(order.Id);
 
         order.Status.Should().Be(ServiceOrderStatus.Delivered);
@@ -55,7 +52,7 @@ public class IncomingEventHandlerTests
     {
         _repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((ServiceOrder?)null);
 
-        var handler = new PaymentConfirmedHandler(_repo.Object, _publisher.Object);
+        var handler = new PaymentConfirmedHandler(_repo.Object);
         var act = async () => await handler.HandleAsync(Guid.NewGuid());
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
@@ -127,10 +124,7 @@ public class IncomingEventHandlerTests
         var order = MakeOrderAt(ServiceOrderStatus.InExecution);
         _repo.Setup(r => r.GetByIdAsync(order.Id, default)).ReturnsAsync(order);
         _repo.Setup(r => r.UpdateAsync(order, default)).Returns(Task.CompletedTask);
-        _publisher.Setup(p => p.PublishAsync(It.IsAny<OsService.Domain.Events.DomainEvent>(), default))
-                  .Returns(Task.CompletedTask);
-
-        var handler = new ExecutionCompletedHandler(_repo.Object, _publisher.Object);
+        var handler = new ExecutionCompletedHandler(_repo.Object);
         await handler.HandleAsync(order.Id);
 
         order.Status.Should().Be(ServiceOrderStatus.Finished);
@@ -142,7 +136,7 @@ public class IncomingEventHandlerTests
     {
         _repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((ServiceOrder?)null);
 
-        var handler = new ExecutionCompletedHandler(_repo.Object, _publisher.Object);
+        var handler = new ExecutionCompletedHandler(_repo.Object);
         var act = async () => await handler.HandleAsync(Guid.NewGuid());
 
         await act.Should().ThrowAsync<KeyNotFoundException>();

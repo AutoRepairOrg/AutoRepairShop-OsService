@@ -49,25 +49,10 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
     /// <summary>Adiciona item (serviço/peça) à OS durante o diagnóstico.</summary>
     [HttpPost("{id:guid}/items")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddItem(Guid id, [FromBody] AddItemRequest request, CancellationToken ct)
-    {
-        try
-        {
-            var result = await appService.AddItemAsync(id, request, ct);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new {
-                error = ex.Message,
-                inner = ex.InnerException?.Message,
-                type  = ex.GetType().FullName,
-                stack = ex.StackTrace?.Split('\n').Take(8)
-            });
-        }
-    }
+        => await ExecuteStatusChange(() => appService.AddItemAsync(id, request, ct));
 
     /// <summary>Inicia diagnóstico da OS (Received → InDiagnosis).</summary>
     [HttpPatch("{id:guid}/start-diagnosis")]
@@ -86,36 +71,6 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
     public async Task<IActionResult> SendForApproval(Guid id, CancellationToken ct)
         => await ExecuteStatusChange(() => appService.SendForApprovalAsync(id, ct));
 
-    /// <summary>
-    /// Não inicia a execução pela API. Após BudgetApprovedEvent a OS já vai para InExecution
-    /// e publica OsExecutionStartedEvent. Recusar este PATCH evita executar sem orçamento aprovado.
-    /// </summary>
-    [HttpPatch("{id:guid}/start-execution")]
-    [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> StartExecution(Guid id, CancellationToken ct)
-        => await ExecuteStatusChange(() => appService.StartExecutionAsync(id, ct));
-
-    /// <summary>
-    /// [Override manual] Finaliza o serviço (InExecution → Finished).
-    /// No fluxo normal do Saga, este passo será acionado pelo ExecutionCompletedEvent do ExecutionService.
-    /// Use este endpoint apenas como override administrativo.
-    /// </summary>
-    [HttpPatch("{id:guid}/finish")]
-    [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Finish(Guid id, CancellationToken ct)
-        => await ExecuteStatusChange(() => appService.FinishAsync(id, ct));
-
-    /// <summary>
-    /// [Override manual] Registra a entrega do veículo ao cliente (Finished → Delivered).
-    /// No fluxo normal do Saga, este passo é acionado pelo PaymentConfirmedEvent via handler.
-    /// Use este endpoint apenas como override administrativo.
-    /// Publica OsClosedEvent.
-    /// </summary>
-    [HttpPatch("{id:guid}/deliver")]
-    [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Deliver(Guid id, CancellationToken ct)
-        => await ExecuteStatusChange(() => appService.DeliverAsync(id, ct));
-
     /// <summary>Cancela a OS.</summary>
     [HttpPatch("{id:guid}/cancel")]
     [ProducesResponseType(typeof(ServiceOrderResponse), StatusCodes.Status200OK)]
@@ -131,6 +86,7 @@ public class ServiceOrderController(ServiceOrderAppService appService) : Control
         }
         catch (KeyNotFoundException) { return NotFound(); }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
         catch (Exception ex)
         {
             return StatusCode(500, new {

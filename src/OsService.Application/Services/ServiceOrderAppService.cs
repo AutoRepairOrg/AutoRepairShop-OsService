@@ -21,7 +21,6 @@ public class ServiceOrderAppService(
         );
 
         await repository.AddAsync(order, ct);
-        await PublishDomainEventsAsync(order, ct);
 
         return MapToResponse(order);
     }
@@ -68,46 +67,6 @@ public class ServiceOrderAppService(
     {
         var order = await GetOrThrowAsync(id, ct);
         order.SendForApproval();
-        await repository.UpdateAsync(order, ct);
-        await PublishDomainEventsAsync(order, ct);
-        return MapToResponse(order);
-    }
-
-    /// <summary>
-    /// Endpoint HTTP não inicia a execução: isso só ocorre via BudgetApprovedEvent.
-    /// Impede pular a aprovação do cliente enquanto a OS está em WaitingApproval.
-    /// </summary>
-    public async Task<ServiceOrderResponse> StartExecutionAsync(Guid id, CancellationToken ct = default)
-    {
-        await GetOrThrowAsync(id, ct);
-        throw new InvalidOperationException(
-            "A execução inicia automaticamente após a aprovação do orçamento pelo cliente (BudgetApprovedEvent). " +
-            "Não é permitido iniciar a execução enquanto a OS aguarda essa aprovação.");
-    }
-
-    /// <summary>
-    /// Finaliza o serviço (marca como concluído, aguardando entrega).
-    /// No fluxo do Saga, será acionado pelo ExecutionCompletedEvent do ExecutionService.
-    /// Pode ser chamado manualmente pelo Administrador como override.
-    /// </summary>
-    public async Task<ServiceOrderResponse> FinishAsync(Guid id, CancellationToken ct = default)
-    {
-        var order = await GetOrThrowAsync(id, ct);
-        order.Finish();
-        await repository.UpdateAsync(order, ct);
-        await PublishDomainEventsAsync(order, ct);
-        return MapToResponse(order);
-    }
-
-    /// <summary>
-    /// Registra a entrega do veículo ao cliente.
-    /// No fluxo do Saga, acionado pelo PaymentConfirmedEvent via PaymentConfirmedHandler.
-    /// Publica OsClosedEvent.
-    /// </summary>
-    public async Task<ServiceOrderResponse> DeliverAsync(Guid id, CancellationToken ct = default)
-    {
-        var order = await GetOrThrowAsync(id, ct);
-        order.Deliver();
         await repository.UpdateAsync(order, ct);
         await PublishDomainEventsAsync(order, ct);
         return MapToResponse(order);
