@@ -18,7 +18,7 @@ src/
 tests/
 └── OsService.Tests
     ├── Unit/                → Testes unitários do domínio (xUnit + FluentAssertions)
-    └── BDD/                 → Testes de comportamento (SpecFlow/Reqnroll)
+    └── BDD/                 → Cenários Gherkin da saga (Reqnroll)
 k8s/                         → Manifestos Kubernetes (Deployment, Service, HPA, ConfigMap)
 .github/workflows/ci.yml     → Pipeline CI/CD (Build → Testes → SonarQube → Docker → K8s)
 ```
@@ -103,6 +103,20 @@ Medição local em 5 de novembro de 2026, configuração Release, relatório Ope
 |---|---|---|
 | 45 aprovados | 324 / 353 | **91,8%** |
 
+### BDD (Gherkin)
+
+Os cenários ficam em `tests/OsService.Tests/BDD/SagaDaOrdem.feature`, escritos em português (`# language: pt`). O Reqnroll (sucessor do SpecFlow) transforma cada `Cenário` em teste xUnit e liga os passos à classe `SagaDaOrdemSteps`. A execução é em memória: repositório e publicador de eventos são falsos, sem SQL Server nem RabbitMQ.
+
+| Cenário | O que confere |
+|---|---|
+| Caminho feliz até a entrega do veículo | `WaitingApproval`, `InExecution`, `Finished` e `Delivered`, com `OsSentForApprovalEvent` e `OsExecutionStartedEvent` |
+| Cliente recusa o orçamento e a ordem é cancelada | `Canceled` |
+| Falha na oficina cancela a ordem e avisa a saga | `Canceled` e `OsCancelledEvent` |
+
+```powershell
+dotnet test tests/OsService.Tests/OsService.Tests.csproj --filter FullyQualifiedName~BDD
+```
+
 ### SonarQube
 
 O mesmo job envia a análise para o SonarCloud (`sonar-project.properties`, chave `AutoRepairOrg_AutoRepairShop-OsService`).
@@ -153,7 +167,7 @@ O painel para importar está em `observability/datadog-dashboard.json` (Dashboar
 - Entity Framework Core + SQL Server 2022
 - RabbitMQ (mensageria — Saga coreografado)
 - xUnit + FluentAssertions + Moq (testes unitários)
-- SpecFlow/Reqnroll (BDD)
+- Reqnroll + Gherkin (BDD)
 - Docker + Kubernetes (Minikube / produção)
 - GitHub Actions (CI/CD)
 - SonarQube (qualidade de código)
