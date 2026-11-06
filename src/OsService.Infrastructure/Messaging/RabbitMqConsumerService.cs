@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -84,7 +85,19 @@ public class RabbitMqConsumerService(
     private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs ea)
     {
         var routingKey = ea.RoutingKey;
+        var correlationId = RabbitMqSagaActivity.Extract(ea.BasicProperties);
         var body = Encoding.UTF8.GetString(ea.Body.ToArray());
+
+        using var correlation = RabbitMqSagaActivity.Begin(correlationId);
+        using var activity = RabbitMqSagaActivity.StartConsumer(routingKey, ea.BasicProperties);
+        activity?.SetTag("messaging.system", "rabbitmq");
+        activity?.SetTag("messaging.operation", "receive");
+        activity?.SetTag("event_type", routingKey);
+        using var logScope = logger.BeginScope(new Dictionary<string, object>
+        {
+            ["correlation_id"] = correlationId,
+            ["event_type"] = routingKey
+        });
 
         try
         {
@@ -143,11 +156,17 @@ public class RabbitMqConsumerService(
             }
 
             await _channel!.BasicAckAsync(ea.DeliveryTag, multiple: false);
-            logger.LogInformation("Evento {RoutingKey} processado com sucesso", routingKey);
+            RabbitMqSagaActivity.RecordConsumed(routingKey);
+            logger.LogInformation(
+                "Saga event consumed {event_type} {correlation_id}",
+                routingKey,
+                correlationId);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Falha ao processar {RoutingKey}: {Body}", routingKey, body);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            RabbitMqSagaActivity.RecordFailed(routingKey);
+            logger.LogError(ex, "Falha ao processar {event_type} {correlation_id}: {Body}", routingKey, correlationId, body);
             await _channel!.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
         }
     }

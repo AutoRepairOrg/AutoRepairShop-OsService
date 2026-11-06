@@ -19,6 +19,11 @@ spec:
     metadata:
       labels:
         app: os-service
+        tags.datadoghq.com/env: lab
+        tags.datadoghq.com/service: os-service
+        tags.datadoghq.com/version: "1.0.0"
+      annotations:
+        ad.datadoghq.com/os-service.logs: '[{"source":"csharp","service":"os-service","env":"lab"}]'
     spec:
       imagePullSecrets:
         - name: ghcr-pull
@@ -54,6 +59,20 @@ spec:
                 configMapKeyRef:
                   name: os-service-config
                   key: rabbitmq-password
+            - name: DD_SERVICE
+              value: "os-service"
+            - name: DD_ENV
+              value: "lab"
+            - name: DD_VERSION
+              value: "1.0.0"
+            - name: DD_SITE
+              value: "datadoghq.com"
+            - name: DD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: datadog-secret
+                  key: api-key
+                  optional: true
           startupProbe:
             httpGet:
               path: /health

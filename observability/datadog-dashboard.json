@@ -1,0 +1,131 @@
+{
+  "title": "AutoRepair — Saga e APIs",
+  "description": "Logs, HTTP e eventos da saga entre os-service, billing-service e execution-service.",
+  "layout_type": "ordered",
+  "widgets": [
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Logs por serviço",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "queries": [
+              {
+                "name": "logs",
+                "data_source": "logs",
+                "search": {
+                  "query": "service:(os-service OR billing-service OR execution-service)"
+                },
+                "indexes": ["*"],
+                "compute": { "aggregation": "count" },
+                "group_by": [
+                  {
+                    "facet": "service",
+                    "limit": 10,
+                    "sort": { "aggregation": "count", "order": "desc" }
+                  }
+                ]
+              }
+            ],
+            "display_type": "bars"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Eventos da saga publicados",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "queries": [
+              {
+                "name": "published",
+                "data_source": "metrics",
+                "query": "sum:autorepair.saga.published{*} by {event,service}.as_count()"
+              }
+            ],
+            "display_type": "bars"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Eventos da saga consumidos e com falha",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "queries": [
+              {
+                "name": "consumed",
+                "data_source": "metrics",
+                "query": "sum:autorepair.saga.consumed{*} by {event,service}.as_count()"
+              },
+              {
+                "name": "failed",
+                "data_source": "metrics",
+                "query": "sum:autorepair.saga.failed{*} by {event,service}.as_count()"
+              }
+            ],
+            "display_type": "line"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Latência HTTP (ms)",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "queries": [
+              {
+                "name": "duration",
+                "data_source": "metrics",
+                "query": "avg:autorepair.http.duration{*} by {service,http.route}"
+              }
+            ],
+            "display_type": "line"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "query_value",
+        "title": "Requisições HTTP com erro (5xx)",
+        "requests": [
+          {
+            "response_format": "scalar",
+            "queries": [
+              {
+                "name": "errors",
+                "data_source": "metrics",
+                "query": "sum:autorepair.http.requests{http.status_code:5*}.as_count()",
+                "aggregator": "sum"
+              }
+            ]
+          }
+        ],
+        "autoscale": true,
+        "precision": 0
+      }
+    },
+    {
+      "definition": {
+        "type": "log_stream",
+        "title": "Logs da saga",
+        "query": "service:(os-service OR billing-service OR execution-service) \"Saga event\"",
+        "columns": ["service", "@event_type", "@correlation_id", "@aggregate_id"],
+        "show_date_column": true,
+        "show_message_column": true,
+        "message_display": "expanded-md"
+      }
+    }
+  ]
+}

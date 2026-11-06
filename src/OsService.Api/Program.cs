@@ -1,12 +1,18 @@
 using Microsoft.EntityFrameworkCore;
+using OsService.Api.Observability;
 using OsService.Application.Events;
 using OsService.Application.Interfaces;
 using OsService.Application.Services;
 using OsService.Domain.Interfaces;
 using OsService.Infrastructure.Messaging;
 using OsService.Infrastructure.Persistence;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, _, loggerConfiguration) =>
+    DatadogObservability.Configure(loggerConfiguration, context.Configuration, "os-service"));
+builder.Services.AddDatadog(builder.Configuration, "os-service");
 
 // ── Database (SQL Server / LocalDB) ───────────────────────────────────────────
 builder.Services.AddDbContext<OsDbContext>(options =>
@@ -69,6 +75,8 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<OsDbContext>();
     await db.Database.MigrateAsync();
 }
+
+app.UseDatadog();
 
 // Middleware temporário de diagnóstico — remover antes do deploy
 app.Use(async (ctx, next) => {

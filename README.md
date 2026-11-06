@@ -122,6 +122,31 @@ Consulta pública da API em 5 de novembro de 2026:
 
 Painel: [sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService](https://sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService)
 
+## Observabilidade (Datadog)
+
+Logs, traces e métricas saem quando `DD_API_KEY` está definida. Sem a chave o serviço sobe e o log fica no console.
+
+No cluster, crie o secret uma vez no namespace `autorepair` (os três deployments leem o mesmo):
+
+```bash
+kubectl -n autorepair create secret generic datadog-secret --from-literal=api-key=SUA_API_KEY
+```
+
+O modelo está em `k8s/datadog-secret.example.yaml`. O valor `SUBSTITUA_PELA_API_KEY` não é enviado. Se a organização for da Europa, troque `DD_SITE` no deployment de `datadoghq.com` para `datadoghq.eu`.
+
+Na máquina local:
+
+```powershell
+$env:DD_API_KEY = "SUA_API_KEY"
+$env:DD_SITE = "datadoghq.com"
+```
+
+O `docker compose` repassa essas variáveis. O serviço deste repositório publica como `os-service`.
+
+No Datadog, Logs → Explorer: `service:os-service`. A saga aparece com `event_type` e `correlation_id`. APM → Traces mostra o span `saga publish` deste serviço como pai do `saga consume` do próximo. Métricas: `autorepair.saga.published`, `autorepair.saga.consumed`, `autorepair.saga.failed`, `autorepair.http.requests`, `autorepair.http.duration`.
+
+O painel para importar está em `observability/datadog-dashboard.json` (Dashboards → New Dashboard → Import dashboard JSON). O passo a passo dos três serviços está em `guia-observabilidade-datadog.md` na pasta da fase.
+
 ## Tech Stack
 
 - .NET 8 / ASP.NET Core
@@ -132,6 +157,7 @@ Painel: [sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService
 - Docker + Kubernetes (Minikube / produção)
 - GitHub Actions (CI/CD)
 - SonarQube (qualidade de código)
+- OpenTelemetry + Serilog (logs, traces e métricas no Datadog)
 
 ## Autores
 
