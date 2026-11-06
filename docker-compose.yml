@@ -10,6 +10,11 @@ services:
       - RabbitMQ__User=guest
       - RabbitMQ__Password=guest
       - ASPNETCORE_ENVIRONMENT=Development
+      - DD_SERVICE=os-service
+      - DD_ENV=local
+      - DD_VERSION=1.0.0
+      - DD_SITE=${DD_SITE:-datadoghq.com}
+      - DD_API_KEY=${DD_API_KEY:-}
     depends_on:
       sqlserver:
         condition: service_healthy

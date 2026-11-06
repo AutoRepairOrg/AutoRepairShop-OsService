@@ -13,11 +13,13 @@ public class StubEventPublisher(ILogger<StubEventPublisher> logger) : IEventPubl
     public Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
         where TEvent : DomainEvent
     {
+        var eventType = @event.GetType().Name;
+        RabbitMqSagaActivity.RecordPublished(eventType);
         logger.LogInformation(
-            "[STUB EVENT] {EventType} publicado — AggregateId: {Id} — OccurredAt: {At}",
-            typeof(TEvent).Name,
+            "Saga event published {event_type} {aggregate_id} {correlation_id}",
+            eventType,
             @event.AggregateId,
-            @event.OccurredAt);
+            RabbitMqSagaActivity.Current);
 
         return Task.CompletedTask;
     }
