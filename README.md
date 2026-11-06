@@ -5,6 +5,10 @@ Parte da arquitetura distribuída do **Tech Challenge Fase 4 · 12SOAT**.
 
 ## Arquitetura
 
+![Arquitetura da saga](docs/arquitetura.png)
+
+Os três serviços ficam no namespace `autorepair`. Cada API tem LoadBalancer e Swagger. O RabbitMQ continua `ClusterIP`: os pods publicam e consomem na porta 5672.
+
 ```
 src/
 ├── OsService.Api            → Controllers REST, Swagger, Program.cs
@@ -91,7 +95,32 @@ dotnet test
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
-Cobertura mínima exigida: **80%**
+Cobertura mínima exigida pelo pipeline: **80%** de linhas. Abaixo disso o job `Build, Test & Quality` falha.
+
+Medição local em 5 de novembro de 2026, configuração Release, relatório OpenCover do Coverlet:
+
+| Testes | Linhas cobertas | Cobertura de linhas |
+|---|---|---|
+| 45 aprovados | 324 / 353 | **91,8%** |
+
+### SonarQube
+
+O mesmo job envia a análise para o SonarCloud (`sonar-project.properties`, chave `AutoRepairOrg_AutoRepairShop-OsService`).
+
+[![Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=AutoRepairOrg_AutoRepairShop-OsService)](https://sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService)
+
+Consulta pública da API em 5 de novembro de 2026:
+
+| Métrica | Resultado |
+|---|---|
+| Quality Gate | Aprovado (`OK`) |
+| Bugs | 0 |
+| Vulnerabilidades | 0 |
+| Code smells | 0 |
+| Confiabilidade, segurança e manutenibilidade | A |
+| Linhas duplicadas | 0% |
+
+Painel: [sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService](https://sonarcloud.io/summary/overall?id=AutoRepairOrg_AutoRepairShop-OsService)
 
 ## Tech Stack
 
